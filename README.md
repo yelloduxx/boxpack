@@ -1,51 +1,53 @@
 # Boxpack
 
-Boxpack — браузерный визуализатор упаковки коробок в 3D. Вводите размеры внешней коробки и товаров, генерируйте несколько вариантов укладки и сравнивайте заполнение в интерактивном просмотре.
+English | [Русский](README.ru.md)
 
-## Возможности
-- Несколько методов упаковки с разными стратегиями (grid, candidate positions, maximal spaces).
-- Быстрый расчет варианта с максимальным количеством одинаковых товаров.
-- 3D‑превью на Three.js с подсветкой слоев и управлением камерой.
-- Избранные наборы и история замеров в `localStorage`.
-- Переключение единиц (cm/mm) и качества (fast/balanced/deep).
-- Интерфейс на нескольких языках.
+Boxpack is a browser-based 3D box packing visualizer. Enter outer box and item sizes, generate multiple packing variants, and compare fill efficiency in an interactive 3D view.
 
-## Как запустить
-Проект без сборки — это статические файлы. Лучше запускать через локальный сервер, чтобы модули корректно импортировались.
+## Features
+- Multiple packing methods with different strategies (grid, candidate positions, maximal spaces).
+- Fast max-fill calculation for identical items.
+- Three.js 3D preview with layer planes and orbit controls.
+- Favorites and history stored in `localStorage`.
+- Unit (cm/mm) and quality (fast/balanced/deep) toggles.
+- Multilingual UI.
+
+## Run locally
+This is a static project. Use a local server so ES module imports work correctly.
 
 ```sh
 python3 -m http.server 8080
 ```
 
-Откройте `http://localhost:8080` в браузере.
+Open `http://localhost:8080` in your browser.
 
-## Как пользоваться
-1. Укажите размеры внешней коробки.
-2. Добавьте товары (название, количество, размеры, разрешение на поворот).
-3. Нажмите **Generate variants** для сравнения разных методов.
-4. Выберите вариант в списке справа, чтобы увидеть 3D‑раскладку.
-5. Для подбора максимального количества одинаковых товаров используйте **Max fill**.
+## How to use
+1. Set the outer box dimensions.
+2. Add items (name, quantity, dimensions, rotation allowed).
+3. Click **Generate variants** to compare methods.
+4. Pick a variant from the list to view the 3D layout.
+5. Use **Max fill** to find the maximum count of identical items.
 
-## Ключевые функции (app.js)
-- `t`, `applyTranslations` — перевод интерфейса по ключам и применение i18n‑текста.
-- `setUnit`, `scaleAllDimensions`, `formatUnitValue` — переключение единиц и масштабирование размеров.
-- `setQuality`, `getQualityTrialCount` — настройка количества прогонов для быстрых/глубоких расчетов.
-- `loadFavorites`/`saveFavorites`, `loadHistory`/`saveHistory` — сохранение избранного и истории в `localStorage`.
-- `addItem`, `applyDraftItem`, `expandItems` — управление списком товаров и разворачивание по количеству.
-- `packItems` — базовый grid‑алгоритм укладки.
-- `packItemsCandidates` — укладка по кандидатным позициям с рандомизацией и приоритетами.
-- `packItemsSpaces` — алгоритм максимальных свободных объемов (spaces) с оценкой плотности.
-- `packMaxIdenticalItems` — поиск максимального количества одинаковых товаров.
-- `generateVariants`, `generateMaxFillVariant` — генерация и ранжирование вариантов по fill/compactness.
-- `renderVariants`, `renderScene`, `animate` — отрисовка карточек вариантов и 3D‑сцены.
+## Key functions (app.js)
+- `t`, `applyTranslations` — i18n lookup and UI text updates.
+- `setUnit`, `scaleAllDimensions`, `formatUnitValue` — unit switching and dimension scaling.
+- `setQuality`, `getQualityTrialCount` — controls trial counts for fast/deep runs.
+- `loadFavorites`/`saveFavorites`, `loadHistory`/`saveHistory` — persist presets and history in `localStorage`.
+- `addItem`, `applyDraftItem`, `expandItems` — manage items list and expand by quantity.
+- `packItems` — base grid packing algorithm.
+- `packItemsCandidates` — candidate-position packing with randomization and tie-breakers.
+- `packItemsSpaces` — maximal-space packing with density scoring.
+- `packMaxIdenticalItems` — max-fill search for identical items.
+- `generateVariants`, `generateMaxFillVariant` — generate and rank variants by fill/compactness.
+- `renderVariants`, `renderScene`, `animate` — UI cards and 3D scene rendering.
 
-## Структура проекта
-- `index.html` — разметка и подключение Three.js через importmap.
-- `app.js` — вся логика (UI, алгоритмы упаковки, визуализация).
-- `styles.css` — стили.
+## Project structure
+- `index.html` — markup and Three.js importmap.
+- `app.js` — UI logic, packing algorithms, visualization.
+- `styles.css` — styles.
 
-## Зависимости
-- Three.js загружается из CDN: `https://unpkg.com/three@0.161.0/`.
+## Dependencies
+- Three.js from CDN: `https://unpkg.com/three@0.161.0/`.
 
-## Лицензия
-MIT — свободное использование.
+## License
+MIT.
