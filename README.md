@@ -2,6 +2,8 @@
 
 English | [Русский](README.ru.md)
 
+![Boxpack preview](assets/boxpack-preview.png)
+
 Boxpack is a browser-based 3D box packing visualizer. Enter outer box and item sizes, generate multiple packing variants, and compare fill efficiency in an interactive 3D view.
 
 ## Features
@@ -45,6 +47,7 @@ Open `http://localhost:8080` in your browser.
 - `index.html` — markup and Three.js importmap.
 - `app.js` — UI logic, packing algorithms, visualization.
 - `styles.css` — styles.
+- `assets/boxpack-preview.png` — README screenshot.
 
 ## Dependencies
 - Three.js from CDN: `https://unpkg.com/three@0.161.0/`.

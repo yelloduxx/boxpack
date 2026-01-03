@@ -2,6 +2,8 @@
 
 [English](README.md) | Русский
 
+![Boxpack preview](assets/boxpack-preview.png)
+
 Boxpack — браузерный визуализатор упаковки коробок в 3D. Вводите размеры внешней коробки и товаров, генерируйте несколько вариантов укладки и сравнивайте заполнение в интерактивном просмотре.
 
 ## Возможности
@@ -45,6 +47,7 @@ python3 -m http.server 8080
 - `index.html` — разметка и подключение Three.js через importmap.
 - `app.js` — вся логика (UI, алгоритмы упаковки, визуализация).
 - `styles.css` — стили.
+- `assets/boxpack-preview.png` — скриншот для README.
 
 ## Зависимости
 - Three.js загружается из CDN: `https://unpkg.com/three@0.161.0/`.
