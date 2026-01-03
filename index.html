@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Box Packing Visualizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/"
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <div>
+          <p class="eyebrow" data-i18n="hero.eyebrow">Packing Optimizer</p>
+          <h1 data-i18n="hero.title">Pack boxes inside boxes with confidence.</h1>
+          <p class="subtitle" data-i18n="hero.subtitle">
+            Enter sizes, generate multiple packing variants, and inspect the most
+            efficient layout in 3D.
+          </p>
+        </div>
+        <div class="hero-controls">
+          <div class="locale">
+            <label for="language-select" data-i18n="language.label">Language</label>
+            <select id="language-select">
+              <option value="en">English</option>
+              <option value="ru">Русский</option>
+              <option value="de">Deutsch</option>
+              <option value="es">Español</option>
+              <option value="fr">Français</option>
+            </select>
+          </div>
+          <div class="badge" data-i18n="hero.badge">Browser-first • 3D preview</div>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="panel">
+          <div class="unit-toggle">
+            <span data-i18n="labels.units">Units</span>
+            <div class="unit-buttons" role="group" aria-label="Units">
+              <button type="button" class="unit-button" data-unit="cm">cm</button>
+              <button type="button" class="unit-button" data-unit="mm">mm</button>
+            </div>
+          </div>
+          <div class="unit-toggle">
+            <span data-i18n="labels.quality">Quality</span>
+            <div class="unit-buttons" role="group" aria-label="Quality">
+              <button
+                type="button"
+                class="unit-button"
+                data-quality="fast"
+                data-i18n="labels.qualityFast"
+              >
+                Fast
+              </button>
+              <button
+                type="button"
+                class="unit-button"
+                data-quality="balanced"
+                data-i18n="labels.qualityBalanced"
+              >
+                Balanced
+              </button>
+              <button
+                type="button"
+                class="unit-button"
+                data-quality="deep"
+                data-i18n="labels.qualityDeep"
+              >
+                Deep
+              </button>
+            </div>
+          </div>
+          <h2 data-i18n="sections.outerBox">Outer Box</h2>
+          <div class="field-row">
+            <label>
+              <span data-i18n="labels.length">Length</span>
+              <input type="number" id="box-length" min="1" value="60" />
+            </label>
+            <label>
+              <span data-i18n="labels.width">Width</span>
+              <input type="number" id="box-width" min="1" value="40" />
+            </label>
+            <label>
+              <span data-i18n="labels.height">Height</span>
+              <input type="number" id="box-height" min="1" value="40" />
+            </label>
+          </div>
+
+          <h2 data-i18n="sections.items">Items</h2>
+          <div class="field-row">
+            <label>
+              <span data-i18n="labels.name">Name</span>
+              <input
+                type="text"
+                id="item-name"
+                placeholder="Small box"
+                data-i18n-placeholder="placeholders.itemName"
+              />
+            </label>
+            <label>
+              <span data-i18n="labels.qty">Qty</span>
+              <input type="number" id="item-qty" min="1" value="4" />
+            </label>
+          </div>
+          <div class="field-row">
+            <label>
+              <span data-i18n="labels.length">Length</span>
+              <input type="number" id="item-length" min="1" value="10" />
+            </label>
+            <label>
+              <span data-i18n="labels.width">Width</span>
+              <input type="number" id="item-width" min="1" value="8" />
+            </label>
+            <label>
+              <span data-i18n="labels.height">Height</span>
+              <input type="number" id="item-height" min="1" value="6" />
+            </label>
+          </div>
+          <div class="field-row">
+            <label class="checkbox">
+              <input type="checkbox" id="item-rotatable" checked />
+              <span data-i18n="labels.allowRotations">Allow rotations</span>
+            </label>
+          </div>
+          <div class="action-row">
+            <button id="add-item" class="primary" data-i18n="buttons.addItem">Add item</button>
+            <button id="max-fill" class="primary" data-i18n="buttons.maxFill">Max fill</button>
+          </div>
+
+          <div class="items-list" id="items-list"></div>
+
+          <div class="controls">
+            <label class="checkbox">
+              <input type="checkbox" id="allow-rotations" checked />
+              <span data-i18n="labels.allowRotationsAll">Allow rotations for all items</span>
+            </label>
+            <label class="checkbox">
+              <input type="checkbox" id="show-layers" checked />
+              <span data-i18n="labels.showLayers">Show layer planes</span>
+            </label>
+          </div>
+
+          <button id="generate" class="accent" data-i18n="buttons.generate">Generate variants</button>
+
+          <div class="panel-section">
+            <div class="section-header">
+              <h3 data-i18n="sections.favorites">Favorites</h3>
+              <button id="save-preset" class="ghost" data-i18n="buttons.savePreset">
+                Save preset
+              </button>
+            </div>
+            <div class="field-row">
+              <label>
+                <span data-i18n="labels.presetName">Preset name</span>
+                <input
+                  type="text"
+                  id="preset-name"
+                  placeholder="My box"
+                  data-i18n-placeholder="placeholders.presetName"
+                />
+              </label>
+            </div>
+            <div class="list" id="favorites-list"></div>
+          </div>
+
+          <div class="panel-section">
+            <div class="section-header">
+              <h3 data-i18n="sections.history">History</h3>
+              <button id="clear-history" class="ghost" data-i18n="buttons.clearHistory">
+                Clear history
+              </button>
+            </div>
+            <div class="list" id="history-list"></div>
+          </div>
+        </section>
+
+        <section class="viewer">
+          <div class="viewer-header">
+            <div>
+              <h2 data-i18n="sections.preview">3D Preview</h2>
+              <p id="variant-summary" data-i18n="messages.addItems">
+                Add items to generate packing variants.
+              </p>
+            </div>
+            <div class="variant-chip" id="best-chip" data-i18n="labels.best">Best</div>
+          </div>
+          <canvas id="scene"></canvas>
+          <div class="variants" id="variants"></div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
