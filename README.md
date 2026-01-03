@@ -4,6 +4,8 @@ English | [Русский](README.ru.md)
 
 ![Boxpack preview](assets/boxpack-preview.png)
 
+Live demo: https://yelloduxx.github.io/boxpack/
+
 Boxpack is a browser-based 3D box packing visualizer. Enter outer box and item sizes, generate multiple packing variants, and compare fill efficiency in an interactive 3D view.
 
 ## Features
