@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { solveMaxFill } from "./maxfill.js";
 
 const translations = {
   en: {
@@ -56,6 +57,7 @@ const translations = {
     "messages.generated": "Generated variants: {count}. Best fill: {fill}%.",
     "messages.variantTitle": "Variant {index}",
     "messages.variantStats": "Fill {fill}% • Density {density}% • Height {height}",
+    "messages.placedPartial": "Placed {placed} of {total} — the rest does not fit.",
     "items.remove": "Remove",
     "items.defaultName": "Item {index}",
     "items.seedName": "Small box",
@@ -78,6 +80,11 @@ const translations = {
     "methods.spacesLowHeight": "Maximal spaces + low height",
     "methods.spacesBalanced": "Maximal spaces + balanced gaps",
     "methods.maxFill": "Max fill (single item)",
+    "methods.guillotineDp": "Guillotine DP (exact for cut layouts)",
+    "methods.layers": "Layer DP + stacking",
+    "methods.grasp": "Blocks in maximal spaces (GRASP)",
+    "messages.maxFillBound": "Theoretical limit: {bound} items.",
+    "messages.maxFillOptimal": "Proven optimal.",
   },
   ru: {
     title: "Визуализация упаковки коробок",
@@ -134,6 +141,7 @@ const translations = {
       "Сгенерировано вариантов: {count}. Лучшее заполнение: {fill}%.",
     "messages.variantTitle": "Вариант {index}",
     "messages.variantStats": "Заполнение {fill}% • Плотность {density}% • Высота {height}",
+    "messages.placedPartial": "Уложено {placed} из {total} — остальное не помещается.",
     "items.remove": "Удалить",
     "items.defaultName": "Товар {index}",
     "items.seedName": "Маленькая коробка",
@@ -156,6 +164,11 @@ const translations = {
     "methods.spacesLowHeight": "Макс. свободные объемы + низкая высота",
     "methods.spacesBalanced": "Макс. свободные объемы + баланс зазоров",
     "methods.maxFill": "Макс. заполнение (один товар)",
+    "methods.guillotineDp": "Гильотинная ДП (точный поиск по сквозным разрезам)",
+    "methods.layers": "ДП по слоям + укладка слоев",
+    "methods.grasp": "Блоки в макс. свободных объемах (GRASP)",
+    "messages.maxFillBound": "Теоретический предел: {bound} шт.",
+    "messages.maxFillOptimal": "Оптимум доказан.",
   },
   de: {
     title: "Karton‑Packvisualisierung",
@@ -211,6 +224,7 @@ const translations = {
     "messages.generated": "Varianten: {count}. Beste Füllung: {fill}%.",
     "messages.variantTitle": "Variante {index}",
     "messages.variantStats": "Füllung {fill}% • Dichte {density}% • Höhe {height}",
+    "messages.placedPartial": "{placed} von {total} platziert — der Rest passt nicht.",
     "items.remove": "Entfernen",
     "items.defaultName": "Artikel {index}",
     "items.seedName": "Kleiner Karton",
@@ -233,6 +247,11 @@ const translations = {
     "methods.spacesLowHeight": "Maximale Freiräume + geringe Höhe",
     "methods.spacesBalanced": "Maximale Freiräume + ausgewogene Lücken",
     "methods.maxFill": "Maximale Füllung (ein Artikel)",
+    "methods.guillotineDp": "Guillotine-DP (exakt für Schnittmuster)",
+    "methods.layers": "Lagen-DP + Stapelung",
+    "methods.grasp": "Blöcke in maximalen Freiräumen (GRASP)",
+    "messages.maxFillBound": "Theoretische Grenze: {bound} Stück.",
+    "messages.maxFillOptimal": "Nachweislich optimal.",
   },
   es: {
     title: "Visualizador de empaquetado",
@@ -288,6 +307,7 @@ const translations = {
     "messages.generated": "Variantes: {count}. Mejor llenado: {fill}%.",
     "messages.variantTitle": "Variante {index}",
     "messages.variantStats": "Llenado {fill}% • Densidad {density}% • Altura {height}",
+    "messages.placedPartial": "Colocados {placed} de {total}: el resto no cabe.",
     "items.remove": "Quitar",
     "items.defaultName": "Artículo {index}",
     "items.seedName": "Caja pequeña",
@@ -310,6 +330,11 @@ const translations = {
     "methods.spacesLowHeight": "Espacios máximos + baja altura",
     "methods.spacesBalanced": "Espacios máximos + huecos equilibrados",
     "methods.maxFill": "Llenado máximo (un artículo)",
+    "methods.guillotineDp": "PD guillotina (exacta para cortes)",
+    "methods.layers": "PD por capas + apilado",
+    "methods.grasp": "Bloques en espacios máximos (GRASP)",
+    "messages.maxFillBound": "Límite teórico: {bound} unidades.",
+    "messages.maxFillOptimal": "Óptimo demostrado.",
   },
   fr: {
     title: "Visualiseur de packing",
@@ -365,6 +390,7 @@ const translations = {
     "messages.generated": "Variantes : {count}. Meilleur remplissage : {fill}%.",
     "messages.variantTitle": "Variante {index}",
     "messages.variantStats": "Remplissage {fill}% • Densité {density}% • Hauteur {height}",
+    "messages.placedPartial": "{placed} sur {total} placés — le reste ne tient pas.",
     "items.remove": "Retirer",
     "items.defaultName": "Article {index}",
     "items.seedName": "Petite boîte",
@@ -387,6 +413,11 @@ const translations = {
     "methods.spacesLowHeight": "Espaces maximaux + faible hauteur",
     "methods.spacesBalanced": "Espaces maximaux + écarts équilibrés",
     "methods.maxFill": "Remplissage max (un article)",
+    "methods.guillotineDp": "PD guillotine (exacte pour les découpes)",
+    "methods.layers": "PD par couches + empilage",
+    "methods.grasp": "Blocs dans les espaces maximaux (GRASP)",
+    "messages.maxFillBound": "Limite théorique : {bound} pièces.",
+    "messages.maxFillOptimal": "Optimum prouvé.",
   },
 };
 
@@ -523,7 +554,9 @@ Object.values(boxInputs).forEach((input) => {
 });
 
 function readNumber(input) {
-  return Math.max(1, Number.parseFloat(input.value) || 0);
+  // Fractional sizes (e.g. 0.5 cm) are valid; only non-positive or empty input falls back to 1.
+  const value = Number.parseFloat(input.value);
+  return Number.isFinite(value) && value > 0 ? value : 1;
 }
 
 function roundValue(value) {
@@ -1101,6 +1134,9 @@ function expandItems() {
   return expanded;
 }
 
+// Tolerance for floating-point comparisons: 10.1 + 20.2 must "fit" into 30.3.
+const EPS = 1e-6;
+
 function getOrientations(item, rotationsAllowed) {
   const dims = [
     [item.l, item.w, item.h],
@@ -1125,9 +1161,9 @@ function getOrientations(item, rotationsAllowed) {
 function getOrientationCandidates(item, box, rotationsAllowed, policy = "capacity") {
   const orientations = getOrientations(item, rotationsAllowed).map((dims) => {
     const [l, w, h] = dims;
-    const fitX = Math.floor(box.l / l);
-    const fitY = Math.floor(box.w / w);
-    const fitZ = Math.floor(box.h / h);
+    const fitX = Math.floor(box.l / l + EPS);
+    const fitY = Math.floor(box.w / w + EPS);
+    const fitZ = Math.floor(box.h / h + EPS);
     const capacity = fitX * fitY * fitZ;
     const footprint = l * w;
     return { dims, capacity, footprint, height: h, l, w, h };
@@ -1171,7 +1207,11 @@ function tryPlace(state, dims, box) {
   ];
 
   for (const attempt of attempts) {
-    if (attempt.x + l <= box.l && attempt.y + w <= box.w && attempt.z + h <= box.h) {
+    if (
+      attempt.x + l <= box.l + EPS &&
+      attempt.y + w <= box.w + EPS &&
+      attempt.z + h <= box.h + EPS
+    ) {
       const nextRowDepth = Math.max(attempt.rowDepth, w);
       const nextLayerHeight = Math.max(attempt.layerHeight, h);
       return {
@@ -1229,14 +1269,14 @@ function choosePlacement(state, item, box, rotationsAllowed, orientationPolicy) 
 }
 
 function rangesOverlap(aStart, aSize, bStart, bSize) {
-  return aStart < bStart + bSize && bStart < aStart + aSize;
+  return aStart < bStart + bSize - EPS && bStart < aStart + aSize - EPS;
 }
 
 function canPlaceAt(position, dims, placements, box) {
   if (
-    position.x + dims.l > box.l ||
-    position.y + dims.w > box.w ||
-    position.z + dims.h > box.h
+    position.x + dims.l > box.l + EPS ||
+    position.y + dims.w > box.w + EPS ||
+    position.z + dims.h > box.h + EPS
   ) {
     return false;
   }
@@ -1254,7 +1294,7 @@ function canPlaceAt(position, dims, placements, box) {
 }
 
 function addCandidatePosition(positions, positionSet, position, box) {
-  if (position.x >= box.l || position.y >= box.w || position.z >= box.h) return;
+  if (position.x >= box.l - EPS || position.y >= box.w - EPS || position.z >= box.h - EPS) return;
   const key = `${position.x}|${position.y}|${position.z}`;
   if (positionSet.has(key)) return;
   positionSet.add(key);
@@ -1357,11 +1397,14 @@ function packItems(order, box, rotationsAllowed, orientationPolicy) {
   const state = { x: 0, y: 0, z: 0, rowDepth: 0, layerHeight: 0 };
   const placements = [];
   const layers = new Set([0]);
+  let unplaced = 0;
 
   for (const item of order) {
     const placement = choosePlacement(state, item, box, rotationsAllowed, orientationPolicy);
     if (!placement) {
-      return { valid: false, placements: [], layers: [] };
+      // Keep packing the rest instead of discarding the whole variant.
+      unplaced += 1;
+      continue;
     }
 
     if (placement.mode === "layer") {
@@ -1392,7 +1435,8 @@ function packItems(order, box, rotationsAllowed, orientationPolicy) {
   ).sort((a, b) => a - b);
 
   return {
-    valid: true,
+    valid: placements.length > 0,
+    unplaced,
     placements,
     heightUsed,
     layers: settledLayers.length ? settledLayers : Array.from(layers).sort((a, b) => a - b),
@@ -1414,6 +1458,7 @@ function packItemsCandidates(
   const placements = [];
   const candidates = [{ x: 0, y: 0, z: 0 }];
   const candidateSet = new Set(["0|0|0"]);
+  let unplaced = 0;
   const compare = getPositionComparator(positionStrategy);
 
   for (const item of order) {
@@ -1424,9 +1469,10 @@ function packItemsCandidates(
       candidates.sort(compare);
     }
 
-    while (candidates.length) {
-      const position = candidates.shift();
-      const orientations = getOrientationCandidates(item, box, rotationsAllowed, orientationPolicy);
+    const orientations = getOrientationCandidates(item, box, rotationsAllowed, orientationPolicy);
+    // Positions that do not fit this item stay in the list: a later, smaller item may use them.
+    for (let candidateIndex = 0; candidateIndex < candidates.length; candidateIndex += 1) {
+      const position = candidates[candidateIndex];
       let best = null;
       let bestScore = null;
       let bestList = [];
@@ -1447,6 +1493,7 @@ function packItemsCandidates(
 
       if (bestList.length) {
         best = randomTieBreak ? bestList[Math.floor(rng() * bestList.length)] : bestList[0];
+        candidates.splice(candidateIndex, 1);
         placements.push({
           item,
           position: { ...best.position },
@@ -1478,7 +1525,7 @@ function packItemsCandidates(
     }
 
     if (!placed) {
-      return { valid: false, placements: [], layers: [] };
+      unplaced += 1;
     }
   }
 
@@ -1491,7 +1538,7 @@ function packItemsCandidates(
     (a, b) => a - b
   );
 
-  return { valid: true, placements, heightUsed, layers };
+  return { valid: placements.length > 0, unplaced, placements, heightUsed, layers };
 }
 
 function compareScoreVectors(a, b) {
@@ -1526,7 +1573,7 @@ function splitSpace(space, dims) {
   const remainingY = space.w - dims.w;
   const remainingZ = space.h - dims.h;
 
-  if (remainingX > 0) {
+  if (remainingX > EPS) {
     spaces.push({
       x: space.x + dims.l,
       y: space.y,
@@ -1537,7 +1584,7 @@ function splitSpace(space, dims) {
     });
   }
 
-  if (remainingY > 0) {
+  if (remainingY > EPS) {
     spaces.push({
       x: space.x,
       y: space.y + dims.w,
@@ -1548,7 +1595,7 @@ function splitSpace(space, dims) {
     });
   }
 
-  if (remainingZ > 0) {
+  if (remainingZ > EPS) {
     spaces.push({
       x: space.x,
       y: space.y,
@@ -1564,24 +1611,27 @@ function splitSpace(space, dims) {
 
 function spaceContains(container, space) {
   return (
-    space.x >= container.x &&
-    space.y >= container.y &&
-    space.z >= container.z &&
-    space.x + space.l <= container.x + container.l &&
-    space.y + space.w <= container.y + container.w &&
-    space.z + space.h <= container.z + container.h
+    space.x >= container.x - EPS &&
+    space.y >= container.y - EPS &&
+    space.z >= container.z - EPS &&
+    space.x + space.l <= container.x + container.l + EPS &&
+    space.y + space.w <= container.y + container.w + EPS &&
+    space.z + space.h <= container.z + container.h + EPS
   );
 }
 
 function pruneSpaces(spaces) {
   return spaces.filter((space, index) => {
-    if (space.l <= 0 || space.w <= 0 || space.h <= 0) {
+    if (space.l <= EPS || space.w <= EPS || space.h <= EPS) {
       return false;
     }
 
     for (let i = 0; i < spaces.length; i += 1) {
       if (i === index) continue;
-      if (spaceContains(spaces[i], space)) return false;
+      // Identical spaces contain each other: keep only the first copy.
+      if (spaceContains(spaces[i], space) && (i < index || !spaceContains(space, spaces[i]))) {
+        return false;
+      }
     }
 
     return true;
@@ -1597,6 +1647,7 @@ function packItemsSpaces(
 ) {
   const placements = [];
   let spaces = [{ x: 0, y: 0, z: 0, l: box.l, w: box.w, h: box.h }];
+  let unplaced = 0;
 
   for (const item of order) {
     let best = null;
@@ -1606,7 +1657,7 @@ function packItemsSpaces(
       const orientations = getOrientationCandidates(item, space, rotationsAllowed, orientationPolicy);
       orientations.forEach((candidate, pref) => {
         const dims = { l: candidate.dims[0], w: candidate.dims[1], h: candidate.dims[2] };
-        if (dims.l > space.l || dims.w > space.w || dims.h > space.h) return;
+        if (dims.l > space.l + EPS || dims.w > space.w + EPS || dims.h > space.h + EPS) return;
         const position = { x: space.x, y: space.y, z: space.z };
         if (!canPlaceAt(position, dims, placements, box)) return;
 
@@ -1619,7 +1670,8 @@ function packItemsSpaces(
     });
 
     if (!best) {
-      return { valid: false, placements: [], layers: [] };
+      unplaced += 1;
+      continue;
     }
 
     placements.push({
@@ -1643,83 +1695,7 @@ function packItemsSpaces(
     (a, b) => a - b
   );
 
-  return { valid: true, placements, heightUsed, layers };
-}
-
-function packMaxIdenticalItems(
-  item,
-  box,
-  rotationsAllowed,
-  orientationPolicy,
-  { scorePolicy = "waste", rng = Math.random, randomTieBreak = false } = {}
-) {
-  const placements = [];
-  let spaces = [{ x: 0, y: 0, z: 0, l: box.l, w: box.w, h: box.h }];
-
-  while (true) {
-    let best = null;
-    let bestScore = null;
-    let bestCandidates = [];
-
-    spaces.forEach((space, spaceIndex) => {
-      const orientations = getOrientationCandidates(item, space, rotationsAllowed, orientationPolicy);
-      orientations.forEach((candidate, pref) => {
-        const dims = { l: candidate.dims[0], w: candidate.dims[1], h: candidate.dims[2] };
-        if (dims.l > space.l || dims.w > space.w || dims.h > space.h) return;
-        const position = { x: space.x, y: space.y, z: space.z };
-        if (!canPlaceAt(position, dims, placements, box)) return;
-
-        const tieBreaker = randomTieBreak ? rng() : spaceIndex;
-        const score = getSpaceScore(space, dims, scorePolicy, pref, tieBreaker);
-        if (!bestScore) {
-          bestScore = score;
-          bestCandidates = [{ space, spaceIndex, dims }];
-          return;
-        }
-        const comparison = compareScoreVectors(score, bestScore);
-        if (comparison < 0) {
-          bestScore = score;
-          bestCandidates = [{ space, spaceIndex, dims }];
-        } else if (comparison === 0) {
-          bestCandidates.push({ space, spaceIndex, dims });
-        }
-      });
-    });
-
-    if (bestCandidates.length) {
-      best = randomTieBreak
-        ? bestCandidates[Math.floor(rng() * bestCandidates.length)]
-        : bestCandidates[0];
-    }
-
-    if (!best) break;
-
-    placements.push({
-      item,
-      position: { x: best.space.x, y: best.space.y, z: best.space.z },
-      dims: best.dims,
-    });
-
-    const nextSpaces = splitSpace(best.space, best.dims);
-    spaces = spaces.filter((_, index) => index !== best.spaceIndex);
-    spaces.push(...nextSpaces);
-    spaces = pruneSpaces(spaces);
-  }
-
-  if (!placements.length) {
-    return { valid: false, placements: [], layers: [] };
-  }
-
-  settlePlacements(placements);
-  const heightUsed = placements.reduce(
-    (max, placement) => Math.max(max, placement.position.z + placement.dims.h),
-    0
-  );
-  const layers = Array.from(new Set(placements.map((placement) => placement.position.z))).sort(
-    (a, b) => a - b
-  );
-
-  return { valid: true, placements, heightUsed, layers };
+  return { valid: placements.length > 0, unplaced, placements, heightUsed, layers };
 }
 
 function scoreVariant(result, box, totalVolume) {
@@ -1738,6 +1714,11 @@ function scoreVariant(result, box, totalVolume) {
   const layerPenalty = result.layers.length * 0.015;
   const score = compactness - heightPenalty * 0.08 - layerPenalty;
   return { fill, compactness, score };
+}
+
+// More placed items always wins; compactness score only breaks ties.
+function compareVariants(a, b) {
+  return b.placedCount - a.placedCount || b.score - a.score;
 }
 
 async function generateVariants({ recordHistory = false } = {}) {
@@ -1761,7 +1742,6 @@ async function generateVariants({ recordHistory = false } = {}) {
   }
 
   const rotationsAllowed = allowRotations.checked;
-  const totalVolume = expanded.reduce((sum, item) => sum + item.l * item.w * item.h, 0);
   const itemCount = expanded.length;
 
   function getTrialCount(method) {
@@ -1953,9 +1933,15 @@ async function generateVariants({ recordHistory = false } = {}) {
               })
             : packItems(order, box, rotationsAllowed, method.orientation);
       if (packed.valid) {
-        const scoring = scoreVariant(packed, box, totalVolume);
+        const placedVolume = packed.placements.reduce(
+          (sum, placement) => sum + placement.dims.l * placement.dims.w * placement.dims.h,
+          0
+        );
+        const scoring = scoreVariant(packed, box, placedVolume);
         const variant = {
           id: `variant-${index}-${trialIndex}`,
+          placedCount: packed.placements.length,
+          totalCount: itemCount,
           methodLabelKey: method.labelKey,
           trial: trials > 1 ? trialIndex + 1 : null,
           placements: packed.placements,
@@ -1967,7 +1953,7 @@ async function generateVariants({ recordHistory = false } = {}) {
           box,
         };
         if (method.keepBestOnly) {
-          if (!bestVariant || variant.score > bestVariant.score) {
+          if (!bestVariant || compareVariants(variant, bestVariant) < 0) {
             bestVariant = variant;
           }
         } else {
@@ -1987,7 +1973,7 @@ async function generateVariants({ recordHistory = false } = {}) {
     }
   }
 
-  variants = allVariants.sort((a, b) => b.score - a.score);
+  variants = allVariants.sort(compareVariants);
 
   if (runId !== generationToken) return;
   selectedVariant = variants[0] || null;
@@ -2011,7 +1997,6 @@ async function generateVariants({ recordHistory = false } = {}) {
 
 async function generateMaxFillVariant() {
   const runId = ++generationToken;
-  const yieldState = createYieldState();
   const box = {
     l: readNumber(boxInputs.length),
     w: readNumber(boxInputs.width),
@@ -2021,67 +2006,45 @@ async function generateMaxFillVariant() {
   variantMode = "maxFill";
 
   const item = getDraftItemForMaxFill();
-  const rotationsAllowed = allowRotations.checked;
+  const rotatable = allowRotations.checked && item.rotatable;
   const itemVolume = item.l * item.w * item.h;
 
-  const strategies = [
-    { orientation: "capacity", scorePolicy: "waste" },
-    { orientation: "capacity", scorePolicy: "tight" },
-    { orientation: "flat", scorePolicy: "height" },
-  ];
+  const solution = await solveMaxFill(box, item, {
+    rotatable,
+    quality: currentQuality,
+    seed: Math.floor(Math.random() * 1_000_000_000),
+    shouldStop: () => runId !== generationToken,
+  });
+  if (!solution || runId !== generationToken) return;
 
-  const baseSeed = Math.floor(Math.random() * 1_000_000_000);
-  const trials = getQualityTrialCount(12, { deepTrials: 100 });
-  const maxFillVariants = [];
+  variants = solution.results.map((result, index) => {
+    const placements = result.placements.map((placement) => ({ item, ...placement }));
+    settlePlacements(placements);
+    const heightUsed = placements.reduce(
+      (max, placement) => Math.max(max, placement.position.z + placement.dims.h),
+      0
+    );
+    const layers = Array.from(
+      new Set(placements.map((placement) => roundValue(placement.position.z)))
+    ).sort((a, b) => a - b);
+    const packed = { placements, heightUsed, layers };
+    const scoring = scoreVariant(packed, box, itemVolume * result.count);
+    return {
+      id: `max-fill-${result.method}-${index}`,
+      methodLabelKey: `methods.${result.method}`,
+      trial: null,
+      placements,
+      layers,
+      fill: scoring.fill,
+      compactness: scoring.compactness,
+      score: scoring.score,
+      heightUsed,
+      count: result.count,
+      upperBound: solution.upperBound,
+      box,
+    };
+  });
 
-  for (let index = 0; index < strategies.length; index += 1) {
-    const strategy = strategies[index];
-    let best = null;
-
-    for (let trialIndex = 0; trialIndex < trials; trialIndex += 1) {
-      if (runId !== generationToken) return;
-      const rng = createRng(baseSeed + index * 101 + trialIndex * 17);
-      const packed = packMaxIdenticalItems(item, box, rotationsAllowed, strategy.orientation, {
-        scorePolicy: strategy.scorePolicy,
-        rng,
-        randomTieBreak: trials > 1,
-      });
-      if (packed.valid) {
-        const count = packed.placements.length;
-        const scoring = scoreVariant(packed, box, itemVolume * count);
-        const variant = {
-          id: `max-fill-${index}-${trialIndex}`,
-          methodLabelKey: "methods.maxFill",
-          trial: strategies.length > 1 ? index + 1 : null,
-          placements: packed.placements,
-          layers: packed.layers,
-          fill: scoring.fill,
-          compactness: scoring.compactness,
-          score: scoring.score,
-          heightUsed: packed.heightUsed,
-          count,
-          box,
-        };
-        if (
-          !best ||
-          count > best.count ||
-          (count === best.count && variant.score > best.score)
-        ) {
-          best = variant;
-        }
-      }
-
-      await maybeYield(yieldState);
-    }
-
-    if (best) {
-      maxFillVariants.push(best);
-    }
-  }
-
-  variants = maxFillVariants.sort((a, b) => (b.count - a.count) || (b.score - a.score));
-
-  if (runId !== generationToken) return;
   selectedVariant = variants[0] || null;
   renderVariants();
   renderScene();
@@ -2119,10 +2082,18 @@ function renderVariants() {
 
   if (variantMode === "maxFill") {
     bestChip.style.display = variants.length > 1 ? "inline-flex" : "none";
-    variantSummary.textContent = t("messages.maxFill", {
-      count: selectedVariant?.count ?? variants[0].count,
-      fill: ((selectedVariant ?? variants[0]).fill * 100).toFixed(1),
-    });
+    const shown = selectedVariant ?? variants[0];
+    const boundText =
+      shown.upperBound == null
+        ? ""
+        : shown.count >= shown.upperBound
+          ? ` ${t("messages.maxFillOptimal")}`
+          : ` ${t("messages.maxFillBound", { bound: shown.upperBound })}`;
+    variantSummary.textContent =
+      t("messages.maxFill", {
+        count: shown.count,
+        fill: (shown.fill * 100).toFixed(1),
+      }) + boundText;
   } else {
     bestChip.style.display = "inline-flex";
     variantSummary.textContent = t("messages.generated", {
@@ -2141,6 +2112,14 @@ function renderVariants() {
     card.innerHTML = `
       <strong>${t("messages.variantTitle", { index: index + 1 })}</strong>
       <p class="subtitle">${t("labels.method")}: ${t(variant.methodLabelKey)}${variant.trial ? ` • ${t("labels.trial")} ${variant.trial}` : ""}</p>
+      ${
+        variant.totalCount && variant.placedCount < variant.totalCount
+          ? `<p class="subtitle">${t("messages.placedPartial", {
+              placed: variant.placedCount,
+              total: variant.totalCount,
+            })}</p>`
+          : ""
+      }
       <p class="subtitle">${t("messages.variantStats", {
         fill: (variant.fill * 100).toFixed(1),
         density: (variant.compactness * 100).toFixed(1),
