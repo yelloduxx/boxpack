@@ -41,12 +41,13 @@ Open `http://localhost:8080` in your browser.
 - `packItems` — base grid packing algorithm.
 - `packItemsCandidates` — candidate-position packing with randomization and tie-breakers.
 - `packItemsSpaces` — maximal-space packing with density scoring.
-- `packMaxIdenticalItems` — max-fill search for identical items.
+- `solveMaxFill` (`maxfill.js`) — max-fill solver for identical items: guillotine DP over raster points, layer DP + stacking, and a GRASP block heuristic on maximal spaces; also returns a theoretical upper bound, so the UI can show when the result is proven optimal.
 - `generateVariants`, `generateMaxFillVariant` — generate and rank variants by fill/compactness.
 - `renderVariants`, `renderScene`, `animate` — UI cards and 3D scene rendering.
 
 ## Project structure
 - `index.html` — markup and Three.js importmap.
+- `maxfill.js` — max-fill solver (no DOM dependencies).
 - `app.js` — UI logic, packing algorithms, visualization.
 - `styles.css` — styles.
 - `assets/boxpack-preview.png` — README screenshot.
