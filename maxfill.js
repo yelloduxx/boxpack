@@ -121,8 +121,10 @@ function fillBlock(out, o, origin, size) {
   }
 }
 
-// Guillotine DP over an n-dimensional raster grid (n = 2 or 3). `baseCount(size)` returns
-// the best homogeneous block for a sub-box, splits are tried along every axis.
+// Guillotine DP over an n-dimensional raster grid (n = 2 or 3). `baseOf(size)` returns the
+// best homogeneous block for a sub-box, splits are tried along every axis. Among layouts
+// with the same count the one made of fewer blocks wins (Aljuhani & Papageorgiou's
+// "complexity index"): large uniform regions instead of a patchwork of orientations.
 function guillotineDp(rasters, baseOf) {
   const dimsCount = rasters.length;
   const n = rasters.map((r) => r.points.length);
@@ -133,6 +135,7 @@ function guillotineDp(rasters, baseOf) {
     total *= n[axis];
   }
   const value = new Int32Array(total);
+  const blocks = new Int32Array(total);
   const choiceAxis = new Int8Array(total);
   const choiceArg = new Int32Array(total);
   const index = new Array(dimsCount).fill(0);
@@ -148,6 +151,7 @@ function guillotineDp(rasters, baseOf) {
 
     const base = baseOf(size);
     let best = base.count;
+    let bestBlocks = base.count ? 1 : 0;
     let bestAxis = -1;
     let bestArg = base.index;
 
@@ -157,10 +161,13 @@ function guillotineDp(rasters, baseOf) {
       const full = size[axis];
       const offset = state - index[axis] * stride[axis];
       for (let a = 1; a < points.length && points[a] * 2 <= full; a += 1) {
-        const b = floorIndex[full - points[a]];
-        const candidate = value[offset + a * stride[axis]] + value[offset + b * stride[axis]];
-        if (candidate > best) {
+        const first = offset + a * stride[axis];
+        const second = offset + floorIndex[full - points[a]] * stride[axis];
+        const candidate = value[first] + value[second];
+        const candidateBlocks = blocks[first] + blocks[second];
+        if (candidate > best || (candidate === best && candidateBlocks < bestBlocks)) {
           best = candidate;
+          bestBlocks = candidateBlocks;
           bestAxis = axis;
           bestArg = a;
         }
@@ -168,11 +175,92 @@ function guillotineDp(rasters, baseOf) {
     }
 
     value[state] = best;
+    blocks[state] = bestBlocks;
     choiceAxis[state] = bestAxis;
     choiceArg[state] = bestArg;
   }
 
-  return { value, choiceAxis, choiceArg, stride, total };
+  return { value, blocks, choiceAxis, choiceArg, stride, total };
+}
+
+// Reconstructs the 2D layout of a DP state as rectangles {x, y, o} in plane coordinates.
+function reconstruct2d(dp, planeRasters, layerOrientations, planeAxes, state, origin, rects) {
+  const stack = [{ state, origin }];
+  while (stack.length) {
+    const { state, origin } = stack.pop();
+    if (!dp.value[state]) continue;
+    const i0 = Math.floor(state / dp.stride[0]);
+    const i1 = state - i0 * dp.stride[0];
+    const index = [i0, i1];
+    const size = [planeRasters[0].points[i0], planeRasters[1].points[i1]];
+    const axis = dp.choiceAxis[state];
+    if (axis < 0) {
+      const o = layerOrientations[dp.choiceArg[state]];
+      const sides = [o[planeAxes[0]], o[planeAxes[1]]];
+      for (let a = 0; a + sides[0] <= size[0]; a += sides[0]) {
+        for (let b = 0; b + sides[1] <= size[1]; b += sides[1]) {
+          rects.push({ x: origin[0] + a, y: origin[1] + b, o });
+        }
+      }
+      continue;
+    }
+    const a = dp.choiceArg[state];
+    const cut = planeRasters[axis].points[a];
+    const b = planeRasters[axis].floorIndex[size[axis] - cut];
+    const base = state - index[axis] * dp.stride[axis];
+    const secondOrigin = [...origin];
+    secondOrigin[axis] += cut;
+    stack.push({ state: base + a * dp.stride[axis], origin });
+    stack.push({ state: base + b * dp.stride[axis], origin: secondOrigin });
+  }
+}
+
+// First-order non-guillotine ("five-block" / pinwheel) partition of the whole layer, the
+// building block of the recursive partitioning approach of Morabito & Morales (1998) and
+// Birgin, Lobato & Morabito (2010): two vertical and two horizontal cuts give four corner
+// rectangles arranged like a pinwheel around a centre, each solved by the guillotine DP.
+// This finds the classic pallet patterns a pure guillotine search cannot reach.
+function fiveBlockLayer(dp, planeRasters, budgetOps) {
+  const [rx, ry] = planeRasters;
+  const nx = rx.points.length;
+  const ny = ry.points.length;
+  const L = rx.points[nx - 1];
+  const W = ry.points[ny - 1];
+  const stateOf = (l, w) => rx.floorIndex[l] * dp.stride[0] + ry.floorIndex[w];
+  let best = { count: dp.value[dp.total - 1], blocks: dp.blocks[dp.total - 1], cuts: null };
+  if ((nx * nx * ny * ny) / 4 > budgetOps) return best;
+
+  for (let i1 = 1; i1 < nx - 1; i1 += 1) {
+    const x1 = rx.points[i1];
+    for (let i2 = i1; i2 < nx - 1; i2 += 1) {
+      const x2 = rx.points[i2];
+      for (let j1 = 1; j1 < ny - 1; j1 += 1) {
+        const y1 = ry.points[j1];
+        const bottomRight = stateOf(L - x1, y1);
+        for (let j2 = j1; j2 < ny - 1; j2 += 1) {
+          const y2 = ry.points[j2];
+          const parts = [
+            stateOf(x1, y2), // bottom-left, tall
+            bottomRight, // bottom-right, wide
+            stateOf(L - x2, W - y1), // top-right, tall
+            stateOf(x2, W - y2), // top-left, wide
+            x2 > x1 && y2 > y1 ? stateOf(x2 - x1, y2 - y1) : -1, // centre
+          ];
+          let count = 0;
+          let blocks = 0;
+          parts.forEach((state) => {
+            if (state < 0) return;
+            count += dp.value[state];
+            blocks += dp.blocks[state];
+          });
+          if (count > best.count || (count === best.count && blocks < best.blocks)) {
+            best = { count, blocks, cuts: [x1, x2, y1, y2] };
+          }
+        }
+      }
+    }
+  }
+  return best;
 }
 
 function dpCost(rasters) {
@@ -216,7 +304,11 @@ function solveDp3d(grid, orientations, rasters) {
   return placements;
 }
 
-// Layers stacked along `stackAxis`; every layer is solved as a 2D guillotine problem.
+// Layered packing, the way pallets and cartons are loaded in practice: every layer is a
+// 2D pallet-loading pattern (guillotine DP + five-block partition), layers are stacked
+// along `stackAxis`. Identical layers are preferred over a mix of layer types, and every
+// second layer is rotated by 180° so asymmetric patterns interlock like brickwork.
+// Items in a layer all have the same height, so each one rests fully on the layer below.
 function solveLayered(grid, orientations, rasters, budget) {
   let best = null;
 
@@ -226,6 +318,7 @@ function solveLayered(grid, orientations, rasters, budget) {
     if (dpCost(planeRasters).ops > budget.dp || dpCost(planeRasters).states > budget.states) {
       continue;
     }
+    const planeSize = planeAxes.map((axis) => grid.box[axis]);
 
     const thicknesses = axisSides(orientations, stackAxis);
     const layers = thicknesses.map((thickness) => {
@@ -243,16 +336,23 @@ function solveLayered(grid, orientations, rasters, budget) {
         });
         return { count, index };
       });
-      return { thickness, layerOrientations, dp, count: dp.value[dp.total - 1] };
+      const fiveBlock = fiveBlockLayer(dp, planeRasters, budget.dp);
+      return { thickness, layerOrientations, dp, fiveBlock, count: fiveBlock.count };
     });
 
-    // 1D knapsack: which layers to stack to use the height best.
+    // Uniform stacking of the single best layer type.
     const height = grid.box[stackAxis];
+    let uniform = { count: 0, layer: null };
+    layers.forEach((layer) => {
+      const count = Math.floor(height / layer.thickness) * layer.count;
+      if (count > uniform.count) uniform = { count, layer };
+    });
+
+    // 1D knapsack over layer types, used only when it beats uniform stacking.
     const knap = new Int32Array(height + 1);
     const pick = new Int32Array(height + 1).fill(-1);
     for (let h = 1; h <= height; h += 1) {
       knap[h] = knap[h - 1];
-      pick[h] = -1;
       layers.forEach((layer, li) => {
         if (layer.thickness <= h && knap[h - layer.thickness] + layer.count > knap[h]) {
           knap[h] = knap[h - layer.thickness] + layer.count;
@@ -261,55 +361,57 @@ function solveLayered(grid, orientations, rasters, budget) {
       });
     }
 
-    if (best && knap[height] <= best.count) continue;
-
-    const placements = [];
-    let h = height;
-    let offset = 0;
     const stacked = [];
-    while (h > 0) {
-      if (pick[h] < 0) {
-        h -= 1;
-        continue;
-      }
-      stacked.push(layers[pick[h]]);
-      h -= layers[pick[h]].thickness;
-    }
-    stacked.forEach((layer) => {
-      const rects = [];
-      const { dp } = layer;
-      const stack = [{ state: dp.total - 1, origin: [0, 0] }];
-      while (stack.length) {
-        const { state, origin } = stack.pop();
-        if (!dp.value[state]) continue;
-        const i0 = Math.floor(state / dp.stride[0]);
-        const i1 = state - i0 * dp.stride[0];
-        const index = [i0, i1];
-        const size = [planeRasters[0].points[i0], planeRasters[1].points[i1]];
-        const axis = dp.choiceAxis[state];
-        if (axis < 0) {
-          const o = layer.layerOrientations[dp.choiceArg[state]];
-          const sides = [o[planeAxes[0]], o[planeAxes[1]]];
-          for (let a = 0; a + sides[0] <= size[0]; a += sides[0]) {
-            for (let b = 0; b + sides[1] <= size[1]; b += sides[1]) {
-              rects.push({ origin: [origin[0] + a, origin[1] + b], o });
-            }
-          }
+    if (knap[height] > uniform.count) {
+      let h = height;
+      while (h > 0) {
+        if (pick[h] < 0) {
+          h -= 1;
           continue;
         }
-        const a = dp.choiceArg[state];
-        const cut = planeRasters[axis].points[a];
-        const b = planeRasters[axis].floorIndex[size[axis] - cut];
-        const base = state - index[axis] * dp.stride[axis];
-        const secondOrigin = [...origin];
-        secondOrigin[axis] += cut;
-        stack.push({ state: base + a * dp.stride[axis], origin });
-        stack.push({ state: base + b * dp.stride[axis], origin: secondOrigin });
+        stacked.push(layers[pick[h]]);
+        h -= layers[pick[h]].thickness;
       }
-      rects.forEach(({ origin, o }) => {
+      // Heaviest-packed layers go to the bottom; equal layers stay together.
+      stacked.sort((a, b) => b.count - a.count || b.thickness - a.thickness);
+    } else if (uniform.layer) {
+      for (let i = 0; i < Math.floor(height / uniform.layer.thickness); i += 1) {
+        stacked.push(uniform.layer);
+      }
+    }
+
+    const total = stacked.reduce((sum, layer) => sum + layer.count, 0);
+    if (!total || (best && total <= best.count)) continue;
+
+    const placements = [];
+    let offset = 0;
+    stacked.forEach((layer, layerIndex) => {
+      const rects = [];
+      const { dp, fiveBlock, layerOrientations } = layer;
+      const rx = planeRasters[0];
+      const ry = planeRasters[1];
+      const stateOf = (l, w) => rx.floorIndex[l] * dp.stride[0] + ry.floorIndex[w];
+      const reconstruct = (state, origin) =>
+        reconstruct2d(dp, planeRasters, layerOrientations, planeAxes, state, origin, rects);
+      if (fiveBlock.cuts) {
+        const [x1, x2, y1, y2] = fiveBlock.cuts;
+        const L = rx.points[rx.points.length - 1];
+        const W = ry.points[ry.points.length - 1];
+        reconstruct(stateOf(x1, y2), [0, 0]);
+        reconstruct(stateOf(L - x1, y1), [x1, 0]);
+        reconstruct(stateOf(L - x2, W - y1), [x2, y1]);
+        reconstruct(stateOf(x2, W - y2), [0, y2]);
+        if (x2 > x1 && y2 > y1) reconstruct(stateOf(x2 - x1, y2 - y1), [x1, y1]);
+      } else {
+        reconstruct(dp.total - 1, [0, 0]);
+      }
+
+      const mirror = layerIndex % 2 === 1;
+      rects.forEach(({ x, y, o }) => {
+        const sides = [o[planeAxes[0]], o[planeAxes[1]]];
         const pos = [0, 0, 0];
-        pos[planeAxes[0]] = origin[0];
-        pos[planeAxes[1]] = origin[1];
+        pos[planeAxes[0]] = mirror ? planeSize[0] - x - sides[0] : x;
+        pos[planeAxes[1]] = mirror ? planeSize[1] - y - sides[1] : y;
         pos[stackAxis] = offset;
         placements.push({ x: pos[0], y: pos[1], z: pos[2], l: o[0], w: o[1], h: o[2] });
       });
@@ -496,12 +598,16 @@ export async function solveMaxFill(box, item, { rotatable = true, quality = "bal
   const results = [];
   const yieldToUi = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+  // Layered packing first: it is what people and palletizers actually build, and it is
+  // stable by construction. The 3D guillotine DP and GRASP may find a few more items by
+  // mixing orientations across the height; they are offered as alternative variants.
+  const layered = solveLayered(grid, orientations, rasters, budget);
+  if (layered) results.push({ method: "layers", placements: layered });
+  await yieldToUi();
+
   const cost = dpCost(rasters);
   if (cost.ops <= budget.dp && cost.states <= budget.states) {
     results.push({ method: "guillotineDp", placements: solveDp3d(grid, orientations, rasters) });
-  } else {
-    const layered = solveLayered(grid, orientations, rasters, budget);
-    if (layered) results.push({ method: "layers", placements: layered });
   }
   await yieldToUi();
 
@@ -520,8 +626,10 @@ export async function solveMaxFill(box, item, { rotatable = true, quality = "bal
   }
   if (graspBest) results.push({ method: "grasp", placements: graspBest });
 
+  // Most items first; on a tie the more regular (layered) layout wins.
+  const rank = { layers: 0, guillotineDp: 1, grasp: 2 };
   const output = results
     .map((r) => ({ method: r.method, count: r.placements.length, placements: toOutput(r.placements, grid.unit) }))
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => b.count - a.count || rank[a.method] - rank[b.method]);
   return { upperBound: bound, results: output };
 }

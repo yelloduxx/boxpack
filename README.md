@@ -41,7 +41,7 @@ Open `http://localhost:8080` in your browser.
 - `packItems` — base grid packing algorithm.
 - `packItemsCandidates` — candidate-position packing with randomization and tie-breakers.
 - `packItemsSpaces` — maximal-space packing with density scoring.
-- `solveMaxFill` (`maxfill.js`) — max-fill solver for identical items: guillotine DP over raster points, layer DP + stacking, and a GRASP block heuristic on maximal spaces; also returns a theoretical upper bound, so the UI can show when the result is proven optimal.
+- `solveMaxFill` (`maxfill.js`) — max-fill solver for identical items. Layered packing first (each layer is a 2D pallet-loading pattern: guillotine DP plus a five-block/pinwheel partition, identical layers preferred, alternate layers rotated 180° to interlock), then a 3D guillotine DP and a GRASP block heuristic on maximal spaces as alternatives. Equal counts prefer fewer blocks, so layouts stay regular. Also returns a theoretical upper bound, so the UI can show when the result is proven optimal.
 - `generateVariants`, `generateMaxFillVariant` — generate and rank variants by fill/compactness.
 - `renderVariants`, `renderScene`, `animate` — UI cards and 3D scene rendering.
 
