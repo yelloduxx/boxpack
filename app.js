@@ -1365,31 +1365,59 @@ function isBetterScore(score, bestScore) {
   return false;
 }
 
+// Drops every placement onto the highest item below it. A hash grid over the floor keeps
+// this near-linear: only placements whose footprints share a cell are compared.
 function settlePlacements(placements) {
   const sorted = [...placements].sort((a, b) => a.position.z - b.position.z);
-  const settled = [];
+  const cellSize = placements.reduce(
+    (max, placement) => Math.max(max, placement.dims.l, placement.dims.w),
+    1e-9
+  );
+  const cells = new Map();
+  const cellRange = (start, size) => [
+    Math.floor(start / cellSize),
+    Math.floor((start + size) / cellSize),
+  ];
 
   sorted.forEach((placement) => {
+    const [x0, x1] = cellRange(placement.position.x, placement.dims.l);
+    const [y0, y1] = cellRange(placement.position.y, placement.dims.w);
     let supportZ = 0;
-    settled.forEach((below) => {
-      const overlapX = rangesOverlap(
-        placement.position.x,
-        placement.dims.l,
-        below.position.x,
-        below.dims.l
-      );
-      const overlapY = rangesOverlap(
-        placement.position.y,
-        placement.dims.w,
-        below.position.y,
-        below.dims.w
-      );
-      if (overlapX && overlapY) {
-        supportZ = Math.max(supportZ, below.position.z + below.dims.h);
+
+    for (let cx = x0; cx <= x1; cx += 1) {
+      for (let cy = y0; cy <= y1; cy += 1) {
+        const bucket = cells.get(`${cx}|${cy}`);
+        if (!bucket) continue;
+        for (const below of bucket) {
+          const top = below.position.z + below.dims.h;
+          if (top <= supportZ) continue;
+          const overlapX = rangesOverlap(
+            placement.position.x,
+            placement.dims.l,
+            below.position.x,
+            below.dims.l
+          );
+          const overlapY = rangesOverlap(
+            placement.position.y,
+            placement.dims.w,
+            below.position.y,
+            below.dims.w
+          );
+          if (overlapX && overlapY) {
+            supportZ = top;
+          }
+        }
       }
-    });
+    }
+
     placement.position.z = supportZ;
-    settled.push(placement);
+    for (let cx = x0; cx <= x1; cx += 1) {
+      for (let cy = y0; cy <= y1; cy += 1) {
+        const key = `${cx}|${cy}`;
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push(placement);
+      }
+    }
   });
 }
 
@@ -1716,6 +1744,10 @@ function scoreVariant(result, box, totalVolume) {
   return { fill, compactness, score };
 }
 
+// The candidate-position and maximal-space packers are quadratic in the item count; above
+// this many items only the linear grid packers run (one trial each).
+const HEAVY_PACKER_MAX_ITEMS = 2000;
+
 // More placed items always wins; compactness score only breaks ties.
 function compareVariants(a, b) {
   return b.placedCount - a.placedCount || b.score - a.score;
@@ -1746,7 +1778,7 @@ async function generateVariants({ recordHistory = false } = {}) {
 
   function getTrialCount(method) {
     const baseTrials = method.trials ?? 1;
-    if (baseTrials <= 1) return 1;
+    if (baseTrials <= 1 || itemCount > HEAVY_PACKER_MAX_ITEMS) return 1;
     if (currentQuality === "deep") return 100;
     const qualityTrials = getQualityTrialCount(baseTrials, { deepTrials: 100 });
     if (itemCount <= 20) return qualityTrials;
@@ -1911,6 +1943,7 @@ async function generateVariants({ recordHistory = false } = {}) {
 
   for (let index = 0; index < methods.length; index += 1) {
     const method = methods[index];
+    if (itemCount > HEAVY_PACKER_MAX_ITEMS && method.packer !== "grid") continue;
     const trials = getTrialCount(method);
     let bestVariant = null;
     const collected = [];
@@ -2173,6 +2206,7 @@ function clearGroup() {
   while (group.children.length) {
     const child = group.children.pop();
     child.geometry?.dispose();
+    if (typeof child.dispose === "function") child.dispose();
     if (child.material) {
       if (Array.isArray(child.material)) {
         child.material.forEach((material) => material.dispose());
@@ -2214,32 +2248,47 @@ function renderScene() {
   group.add(line);
 
   const palette = [0xf1a65a, 0xe45d36, 0x9bb7a6, 0x5b7c99, 0xd9b08c, 0x8c6f56];
+  const { placements } = selectedVariant;
 
-  selectedVariant.placements.forEach((placement, index) => {
-    const { l, w, h } = placement.dims;
-    const geometry = new THREE.BoxGeometry(l, h, w);
-    const material = new THREE.MeshStandardMaterial({
-      color: palette[index % palette.length],
-      transparent: false,
-      opacity: 1,
+  // One instanced mesh for all items and one line geometry for all edges: two draw calls
+  // regardless of the item count, so tens of thousands of items stay interactive.
+  if (placements.length) {
+    const unitBox = new THREE.BoxGeometry(1, 1, 1);
+    const unitEdges = new THREE.EdgesGeometry(unitBox).getAttribute("position").array;
+    const instanced = new THREE.InstancedMesh(
+      unitBox,
+      new THREE.MeshStandardMaterial({ color: 0xffffff }),
+      placements.length
+    );
+    const edgePositions = new Float32Array(placements.length * unitEdges.length);
+    const matrix = new THREE.Matrix4();
+    const color = new THREE.Color();
+
+    placements.forEach((placement, index) => {
+      const { l, w, h } = placement.dims;
+      const cx = placement.position.x + l / 2 - box.l / 2;
+      const cy = placement.position.z + h / 2 - box.h / 2;
+      const cz = placement.position.y + w / 2 - box.w / 2;
+      matrix.makeScale(l, h, w).setPosition(cx, cy, cz);
+      instanced.setMatrixAt(index, matrix);
+      instanced.setColorAt(index, color.setHex(palette[index % palette.length]));
+
+      const offset = index * unitEdges.length;
+      for (let v = 0; v < unitEdges.length; v += 3) {
+        edgePositions[offset + v] = unitEdges[v] * l + cx;
+        edgePositions[offset + v + 1] = unitEdges[v + 1] * h + cy;
+        edgePositions[offset + v + 2] = unitEdges[v + 2] * w + cz;
+      }
     });
-    const mesh = new THREE.Mesh(geometry, material);
 
-    mesh.position.set(
-      placement.position.x + l / 2 - box.l / 2,
-      placement.position.z + h / 2 - box.h / 2,
-      placement.position.y + w / 2 - box.w / 2
-    );
-    group.add(mesh);
+    instanced.instanceMatrix.needsUpdate = true;
+    instanced.instanceColor.needsUpdate = true;
+    group.add(instanced);
 
-    const itemEdges = new THREE.EdgesGeometry(geometry);
-    const itemLine = new THREE.LineSegments(
-      itemEdges,
-      new THREE.LineBasicMaterial({ color: 0x1d1b16 })
-    );
-    itemLine.position.copy(mesh.position);
-    group.add(itemLine);
-  });
+    const edgeGeometry = new THREE.BufferGeometry();
+    edgeGeometry.setAttribute("position", new THREE.BufferAttribute(edgePositions, 3));
+    group.add(new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: 0x1d1b16 })));
+  }
 
   if (showLayers.checked && selectedVariant.layers.length > 1) {
     selectedVariant.layers.forEach((layerZ) => {
