@@ -80,8 +80,8 @@ const translations = {
     "methods.spacesLowHeight": "Maximal spaces + low height",
     "methods.spacesBalanced": "Maximal spaces + balanced gaps",
     "methods.maxFill": "Max fill (single item)",
-    "methods.guillotineDp": "Guillotine DP (exact for cut layouts)",
-    "methods.layers": "Layer DP + stacking",
+    "methods.guillotineDp": "3D guillotine DP (mixed orientations)",
+    "methods.layers": "Pallet layers (five-block patterns, interlocked)",
     "methods.grasp": "Blocks in maximal spaces (GRASP)",
     "messages.maxFillBound": "Theoretical limit: {bound} items.",
     "messages.maxFillOptimal": "Proven optimal.",
@@ -164,8 +164,8 @@ const translations = {
     "methods.spacesLowHeight": "Макс. свободные объемы + низкая высота",
     "methods.spacesBalanced": "Макс. свободные объемы + баланс зазоров",
     "methods.maxFill": "Макс. заполнение (один товар)",
-    "methods.guillotineDp": "Гильотинная ДП (точный поиск по сквозным разрезам)",
-    "methods.layers": "ДП по слоям + укладка слоев",
+    "methods.guillotineDp": "3D гильотинная ДП (смешанные ориентации)",
+    "methods.layers": "Слои как на паллете (пятиблочные схемы, с перевязкой)",
     "methods.grasp": "Блоки в макс. свободных объемах (GRASP)",
     "messages.maxFillBound": "Теоретический предел: {bound} шт.",
     "messages.maxFillOptimal": "Оптимум доказан.",
@@ -247,8 +247,8 @@ const translations = {
     "methods.spacesLowHeight": "Maximale Freiräume + geringe Höhe",
     "methods.spacesBalanced": "Maximale Freiräume + ausgewogene Lücken",
     "methods.maxFill": "Maximale Füllung (ein Artikel)",
-    "methods.guillotineDp": "Guillotine-DP (exakt für Schnittmuster)",
-    "methods.layers": "Lagen-DP + Stapelung",
+    "methods.guillotineDp": "3D-Guillotine-DP (gemischte Ausrichtungen)",
+    "methods.layers": "Palettenlagen (Fünf-Block-Muster, im Verbund)",
     "methods.grasp": "Blöcke in maximalen Freiräumen (GRASP)",
     "messages.maxFillBound": "Theoretische Grenze: {bound} Stück.",
     "messages.maxFillOptimal": "Nachweislich optimal.",
@@ -330,8 +330,8 @@ const translations = {
     "methods.spacesLowHeight": "Espacios máximos + baja altura",
     "methods.spacesBalanced": "Espacios máximos + huecos equilibrados",
     "methods.maxFill": "Llenado máximo (un artículo)",
-    "methods.guillotineDp": "PD guillotina (exacta para cortes)",
-    "methods.layers": "PD por capas + apilado",
+    "methods.guillotineDp": "PD guillotina 3D (orientaciones mixtas)",
+    "methods.layers": "Capas de palé (patrones de cinco bloques, trabadas)",
     "methods.grasp": "Bloques en espacios máximos (GRASP)",
     "messages.maxFillBound": "Límite teórico: {bound} unidades.",
     "messages.maxFillOptimal": "Óptimo demostrado.",
@@ -413,8 +413,8 @@ const translations = {
     "methods.spacesLowHeight": "Espaces maximaux + faible hauteur",
     "methods.spacesBalanced": "Espaces maximaux + écarts équilibrés",
     "methods.maxFill": "Remplissage max (un article)",
-    "methods.guillotineDp": "PD guillotine (exacte pour les découpes)",
-    "methods.layers": "PD par couches + empilage",
+    "methods.guillotineDp": "PD guillotine 3D (orientations mixtes)",
+    "methods.layers": "Couches de palette (motifs à cinq blocs, croisées)",
     "methods.grasp": "Blocs dans les espaces maximaux (GRASP)",
     "messages.maxFillBound": "Limite théorique : {bound} pièces.",
     "messages.maxFillOptimal": "Optimum prouvé.",
@@ -2263,15 +2263,22 @@ function renderScene() {
     const edgePositions = new Float32Array(placements.length * unitEdges.length);
     const matrix = new THREE.Matrix4();
     const color = new THREE.Color();
+    // Colour by item and orientation, so uniform regions of a layout read as one block.
+    const colorKeys = new Map();
 
     placements.forEach((placement, index) => {
       const { l, w, h } = placement.dims;
+      const colorKey = `${placement.item?.name ?? ""}|${l}|${w}|${h}`;
+      if (!colorKeys.has(colorKey)) colorKeys.set(colorKey, colorKeys.size);
       const cx = placement.position.x + l / 2 - box.l / 2;
       const cy = placement.position.z + h / 2 - box.h / 2;
       const cz = placement.position.y + w / 2 - box.w / 2;
       matrix.makeScale(l, h, w).setPosition(cx, cy, cz);
       instanced.setMatrixAt(index, matrix);
-      instanced.setColorAt(index, color.setHex(palette[index % palette.length]));
+      instanced.setColorAt(
+        index,
+        color.setHex(palette[colorKeys.get(colorKey) % palette.length])
+      );
 
       const offset = index * unitEdges.length;
       for (let v = 0; v < unitEdges.length; v += 3) {
